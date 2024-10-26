@@ -1,5 +1,7 @@
 # MNIST Dataset
 mnist_dataset/
+datasets/
+rf_model.pkl
 
 
 # Byte-compiled / optimized / DLL files
