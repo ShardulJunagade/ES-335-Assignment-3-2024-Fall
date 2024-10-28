@@ -6,16 +6,16 @@ from torch import nn
 import streamlit as st
 import json
 import re
+import random
+import time  # Import time for sleep
 
 # Load vocabulary mappings (ensure one-time loading)
-with open("word_to_index.json", "r") as f:
+with open("assets/word_to_index.json", "r") as f:
     word_to_index = json.load(f)
 
-
-with open("index_to_word.json", "r") as f:
+with open("assets/index_to_word.json", "r") as f:
     index_to_word = json.load(f)
     index_to_word = {int(k): v for k, v in index_to_word.items()}
-
 
 vocab_size = len(word_to_index)  # Make sure it matches training vocab size
 
@@ -70,20 +70,47 @@ def generate_text(model, start_sequence, num_words, temperature=1.0):
         logits = output.squeeze(0) / temperature
         next_word_idx = torch.multinomial(F.softmax(logits, dim=-1), num_samples=1).item()
         generated.append(next_word_idx)
-        if index_to_word[next_word_idx] == 'end':
-            break
-    return ' '.join(index_to_word[idx] for idx in generated if index_to_word[idx] != 'pad')
+
+    # Convert generated indices to words and format the text
+    generated_text = ' '.join(index_to_word[idx] for idx in generated if index_to_word[idx] != 'pad')
+    
+    # Capitalize the first letter after each full stop and add a full stop at the end
+    sentences = generated_text.split('. ')
+    formatted_sentences = [s.capitalize() for s in sentences]  # Capitalize first letter of each sentence
+    formatted_text = '. '.join(formatted_sentences)
+    
+    # Add a full stop at the end if not already present
+    if not formatted_text.endswith('.'):
+        formatted_text += '.'
+        
+    return formatted_text
+
+# Function for streaming words
+def stream_data(text):
+    for word in text.split(" "):
+        yield word + " "
+        time.sleep(0.03)  # Adjust the sleep time for typing speed
 
 # Streamlit UI
 st.title("Next Word Prediction App")
 st.write("Generate text using a next-word prediction MLP model.")
 
-input_text = st.text_input("Enter the starting sequence of words:", value="Mix milk and cream")
+# Option for default seed text
+default_seed_length = st.slider("Default Seed Text Length", min_value=5, max_value=20, value=10, step=1)
+default_seed_text = "Paneer and green"
+
+# User input for seed text
+input_text_option = st.radio("Choose seed text input method:", ("Default Seed Text", "Custom Seed Text"))
+if input_text_option == "Default Seed Text":
+    input_text = default_seed_text
+else:
+    input_text = st.text_input("Enter the starting sequence of words:", value="Mix milk and cream")
+
 context_size = st.selectbox("Context Size", [5, 10], index=1)
 embedding_dim = st.selectbox("Embedding Dimension", [32, 64, 128], index=1)
 activation_fn_name = st.selectbox("Activation Function", ["tanh", "leaky_relu"], index=0)
 random_seed = st.selectbox("Random Seed", [42], index=0)
-temperature = st.slider("Temperature", min_value=0.5, max_value= 10.0, value=1.0, step=0.1)
+temperature = st.slider("Temperature", min_value=0.5, max_value=10.0, value=1.0, step=0.1)
 num_words = st.slider("Number of Words to Generate", min_value=10, max_value=100, value=50, step=5)
 
 # Mapping for activation functions
@@ -104,38 +131,31 @@ if len(start_sequence_indices) < context_size:
 # Generate text on button click
 if st.button("Generate Text"):
     generated_text = generate_text(model, start_sequence_indices, num_words, temperature)
+    
+    # Display generated text with streaming effect in main area
     st.write("Generated Text:")
-    st.write(generated_text)
+    output_placeholder = st.empty()  # Create a placeholder for output
 
+    # Streaming effect
+    accumulated_text = ""
+    for word in stream_data(generated_text):
+        accumulated_text += word  # Accumulate the generated text
+        output_placeholder.markdown(accumulated_text, unsafe_allow_html=True)  # Use markdown for output
 
-def calculate_perplexity(model, data_loader):
-    model.eval()
-    total_loss = 0
-    with torch.no_grad():
-        for batch in data_loader:
-            inputs, targets = batch
-            inputs, targets = inputs.to(device), targets.to(device)
-            output = model(inputs)
-            loss = F.nll_loss(output, targets, reduction='sum')
-            total_loss += loss.item()
-    avg_loss = total_loss / len(data_loader.dataset)
-    perplexity = torch.exp(torch.tensor(avg_loss))
-    return perplexity.item()
+    # Display seed text with animation in sidebar
+    st.sidebar.subheader("Seed Text")
+    seed_output_placeholder = st.sidebar.empty()  # Create a placeholder for sidebar output
 
-def load_test_data(context_size):
-    test_data_path = f"test_data_context_{context_size}.pt"
-    if os.path.exists(test_data_path):
-        X_test, Y_test = torch.load(test_data_path)
-        print(f"Loaded test data for context size {context_size} from {test_data_path}")
-        return X_test, Y_test
-    else:
-        raise FileNotFoundError(f"Test data for context size {context_size} not found.")
+    accumulated_seed_text = ""
+    for word in stream_data(input_text):
+        accumulated_seed_text += word  # Accumulate seed text
+        seed_output_placeholder.markdown(accumulated_seed_text, unsafe_allow_html=True)  # Use markdown for sidebar output
 
+    # Display generated text with animation in sidebar
+    st.sidebar.header("Generated Text")
+    generated_sidebar_placeholder = st.sidebar.empty()  # Create a placeholder for sidebar output
 
-# Load test data and calculate perplexity
-X_test, Y_test = load_test_data(context_size)
-if X_test is not None and Y_test is not None:
-    test_dataset = TensorDataset(X_test, Y_test)
-    test_loader = DataLoader(test_dataset, batch_size=64)
-    perplexity_score = calculate_perplexity(model, test_loader)
-    st.write(f"Perplexity Score: {perplexity_score:.2f}")
+    accumulated_generated_text = ""
+    for word in stream_data(generated_text):
+        accumulated_generated_text += word  # Accumulate generated text
+        generated_sidebar_placeholder.markdown(accumulated_generated_text, unsafe_allow_html=True)  # Use markdown for sidebar output
