@@ -96,8 +96,8 @@ st.title("Next Word Prediction App")
 st.write("Generate text using a next-word prediction MLP model.")
 
 # Option for default seed text
-default_seed_length = st.slider("Default Seed Text Length", min_value=5, max_value=20, value=10, step=1)
-default_seed_text = "Paneer and green"
+default_seed_length = st.slider("Default Seed Text Length", min_value=1, max_value=5, value=10, step=1)
+default_seed_text = " ".join(index_to_word[idx] for idx in random.sample(range(vocab_size), default_seed_length))
 
 # User input for seed text
 input_text_option = st.radio("Choose seed text input method:", ("Default Seed Text", "Custom Seed Text"))
@@ -159,3 +159,4 @@ if st.button("Generate Text"):
     for word in stream_data(generated_text):
         accumulated_generated_text += word  # Accumulate generated text
         generated_sidebar_placeholder.markdown(accumulated_generated_text, unsafe_allow_html=True)  # Use markdown for sidebar output
+
