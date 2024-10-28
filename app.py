@@ -1,5 +1,7 @@
 import torch
 import torch.nn.functional as F
+from torch.utils.data import DataLoader, TensorDataset
+import os
 from torch import nn
 import streamlit as st
 import json
@@ -120,3 +122,20 @@ def calculate_perplexity(model, data_loader):
     perplexity = torch.exp(torch.tensor(avg_loss))
     return perplexity.item()
 
+def load_test_data(context_size):
+    test_data_path = f"test_data_context_{context_size}.pt"
+    if os.path.exists(test_data_path):
+        X_test, Y_test = torch.load(test_data_path)
+        print(f"Loaded test data for context size {context_size} from {test_data_path}")
+        return X_test, Y_test
+    else:
+        raise FileNotFoundError(f"Test data for context size {context_size} not found.")
+
+
+# Load test data and calculate perplexity
+X_test, Y_test = load_test_data(context_size)
+if X_test is not None and Y_test is not None:
+    test_dataset = TensorDataset(X_test, Y_test)
+    test_loader = DataLoader(test_dataset, batch_size=64)
+    perplexity_score = calculate_perplexity(model, test_loader)
+    st.write(f"Perplexity Score: {perplexity_score:.2f}")
