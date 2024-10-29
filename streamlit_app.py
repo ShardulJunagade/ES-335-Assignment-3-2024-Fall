@@ -57,7 +57,8 @@ def load_model(context_size, embedding_dim, activation_fn, random_seed):
     model.eval()
     return model
 
-def generate_text(model, start_sequence, num_words, temperature=1.0):
+def generate_text(model, start_sequence, num_words, random_seed, temperature=1.0):
+    torch.manual_seed(random_seed)
     model.eval()
     generated = list(start_sequence)
     for _ in range(num_words):
@@ -68,7 +69,7 @@ def generate_text(model, start_sequence, num_words, temperature=1.0):
         next_word_idx = torch.multinomial(F.softmax(logits, dim=-1), num_samples=1).item()
         generated.append(next_word_idx)
 
-
+    
     generated_text = ' '.join(index_to_word[idx] for idx in generated if index_to_word[idx] != 'pad')
     sentences = generated_text.split('. ')
     
@@ -105,7 +106,7 @@ else:
 context_size = st.selectbox("Context Size", [5, 10], index=1)
 embedding_dim = st.selectbox("Embedding Dimension", [32, 64, 128], index=1)
 activation_fn_name = st.selectbox("Activation Function", ["tanh", "leaky_relu"], index=0)
-random_seed = st.selectbox("Random Seed", [42], index=0)
+random_seed = st.slider("Random Seed", min_value=0, max_value=100, value=42, step=1)
 temperature = st.slider("Temperature", min_value=0.1, max_value=10.0, value=1.0, step=0.1)
 num_words = st.slider("Number of Words to Generate", min_value=10, max_value=200, value=100, step=5)
 
@@ -113,7 +114,7 @@ activation_fn_map = {"tanh": torch.tanh, "leaky_relu": F.leaky_relu}
 activation_fn = activation_fn_map[activation_fn_name]
 
 
-model = load_model(context_size, embedding_dim, activation_fn, random_seed)
+model = load_model(context_size, embedding_dim, activation_fn, 42)
 
 
 start_sequence_words = clean_and_tokenize(input_text)
@@ -123,7 +124,7 @@ if len(start_sequence_indices) < context_size:
     start_sequence_indices = [word_to_index['pad']] * (context_size - len(start_sequence_indices)) + start_sequence_indices
 
 if st.button("Generate Text"):
-    generated_text = generate_text(model, start_sequence_indices, num_words, temperature)
+    generated_text = generate_text(model, start_sequence_indices, num_words, random_seed, temperature)
     
 
     st.write("Generated Text:")
