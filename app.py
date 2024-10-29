@@ -105,7 +105,7 @@ else:
 context_size = st.selectbox("Context Size", [5, 10], index=1)
 embedding_dim = st.selectbox("Embedding Dimension", [32, 64, 128], index=1)
 activation_fn_name = st.selectbox("Activation Function", ["tanh", "leaky_relu"], index=0)
-random_seed = st.selectbox("Random Seed", [42,0], index=0)
+random_seed = st.selectbox("Random Seed", [42], index=0)
 temperature = st.slider("Temperature", min_value=0.1, max_value=10.0, value=1.0, step=0.1)
 num_words = st.slider("Number of Words to Generate", min_value=10, max_value=100, value=50, step=5)
 
