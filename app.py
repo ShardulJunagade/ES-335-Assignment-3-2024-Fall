@@ -71,6 +71,8 @@ def generate_text(model, start_sequence, num_words, temperature=1.0):
 
     generated_text = ' '.join(index_to_word[idx] for idx in generated if index_to_word[idx] != 'pad')
     sentences = generated_text.split('. ')
+    
+    sentences = [s for s in sentences if s not in ['start', 'end']]# don't display the words start and end
     formatted_sentences = [s.capitalize() for s in sentences]  # Capitalize first letter of each sentence
     formatted_text = '. '.join(formatted_sentences)
 
